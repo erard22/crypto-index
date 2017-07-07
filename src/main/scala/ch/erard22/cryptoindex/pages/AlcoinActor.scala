@@ -9,10 +9,8 @@ import ch.erard22.cryptoindex.CryptoIndexer.system
 import ch.erard22.cryptoindex.PersistingActor
 import ch.erard22.cryptoindex.bo.{ExchangeRate, Tick}
 
-import scala.concurrent.Future
-
-final case class Ticker(buy: Double, high: Double, last: Double, low: Double, sell: Double, vol: Double)
-final case class AlcoinResponse(date: String, ticker: Ticker)
+import scala.concurrent.{Await}
+import scala.concurrent.duration._
 
 class AlcoinActor extends Actor {
 
@@ -49,11 +47,7 @@ class AlcoinActor extends Actor {
 
 
   def unmarshal(entity: ResponseEntity): AlcoinResponse = {
-    import scala.concurrent.duration._
-    val timeout = 100.millis
-
-    val bs: Future[ByteString] = entity.toStrict(timeout).map { _.data }
-    val s = bs.map(_.utf8String).value.get.get
-    JsonUtil.fromJson[AlcoinResponse](s)
+    def f = entity.dataBytes.runFold(ByteString(""))(_ ++ _)
+    JsonUtil.fromJson[AlcoinResponse](Await.result(f, 200 millis).utf8String)
   }
 }
